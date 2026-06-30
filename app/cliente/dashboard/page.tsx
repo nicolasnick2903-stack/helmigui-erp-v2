@@ -277,7 +277,7 @@ function ModalLancarNota({ onClose, onSalva }: { onClose: () => void; onSalva: (
 /* ─── PASSO 1: Scanner de código de barras ────────────────── */
 function PassoScanner({ onDetectado }: { onDetectado: (texto: string) => void }) {
   const videoRef    = useRef<HTMLVideoElement>(null)
-  const readerRef   = useRef<{ reset: () => void } | null>(null)
+  const controlsRef = useRef<{ stop: () => void } | null>(null)
   const [status,    setStatus]    = useState<'idle' | 'scanning' | 'ok' | 'error'>('idle')
   const [manual,    setManual]    = useState('')
   const [showManual, setShowManual] = useState(false)
@@ -288,18 +288,18 @@ function PassoScanner({ onDetectado }: { onDetectado: (texto: string) => void })
     try {
       const { BrowserMultiFormatReader } = await import('@zxing/browser')
       const reader = new BrowserMultiFormatReader()
-      readerRef.current = reader as unknown as { reset: () => void }
 
-      reader.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
+      const controls = await reader.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
         if (result) {
           setStatus('ok')
-          reader.reset()
+          controls?.stop()
           onDetectado(result.getText())
         }
         if (err && !(err as Error).message?.includes('No MultiFormat')) {
           console.warn(err)
         }
       })
+      controlsRef.current = controls
     } catch {
       setStatus('error')
     }
@@ -307,7 +307,7 @@ function PassoScanner({ onDetectado }: { onDetectado: (texto: string) => void })
 
   useEffect(() => {
     iniciar()
-    return () => { readerRef.current?.reset() }
+    return () => { controlsRef.current?.stop() }
   }, [iniciar])
 
   return (
@@ -571,7 +571,7 @@ function PassoForm({
           <img src={foto} alt="nota" className="w-14 h-10 object-cover rounded-lg" />
           <div>
             <p className="text-white text-sm font-medium">Foto da nota anexada</p>
-            <p className="text-white/40 text-xs">Clique em "Voltar" para refazer</p>
+            <p className="text-white/40 text-xs">Clique em &quot;Voltar&quot; para refazer</p>
           </div>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-400 ml-auto flex-shrink-0">
             <polyline points="20 6 9 17 4 12"/>
