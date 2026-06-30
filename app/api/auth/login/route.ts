@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
 const schema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   senha: z.string().min(1),
 })
 
@@ -20,11 +20,14 @@ export async function POST(req: NextRequest) {
       .eq('email', email)
       .single()
 
+    console.log('[login] email:', email, '| supabase error:', error?.code, error?.message, '| data:', data ? 'found' : 'null', '| ativo:', data?.ativo)
+
     if (error || !data || !data.ativo) {
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 })
     }
 
     const ok = await bcrypt.compare(senha, data.senha)
+    console.log('[login] bcrypt ok:', ok)
     if (!ok) {
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 })
     }
