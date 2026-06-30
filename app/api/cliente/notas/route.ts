@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
+import { notificarWhatsApp } from '@/lib/whatsapp'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -67,6 +68,29 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Busca nome do cliente para a notificação
+    const { data: cliente } = await supabase
+      .from('Cliente')
+      .select('razaoSocial')
+      .eq('id', clienteId)
+      .single()
+
+    const valor = parsed.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    const venc  = parsed.vencimento
+      ? new Date(parsed.vencimento).toLocaleDateString('pt-BR')
+      : 'não informado'
+    const tipo  = parsed.fluxo === 'ENTRADA' ? 'Receita' : 'Despesa'
+
+    await notificarWhatsApp(
+      `🧾 *Nova Nota Fiscal lançada!*\n` +
+      `👤 Cliente: ${cliente?.razaoSocial ?? 'Desconhecido'}\n` +
+      `💰 Valor: ${valor}\n` +
+      `📂 Categoria: ${parsed.categoria ?? 'Não informada'}\n` +
+      `📊 Tipo: ${tipo}\n` +
+      `📅 Vencimento: ${venc}`
+    )
+
     return NextResponse.json(data, { status: 201 })
   } catch (err) {
     if (err instanceof z.ZodError) return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
