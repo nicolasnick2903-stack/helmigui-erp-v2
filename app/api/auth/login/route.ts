@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { signToken } from '@/lib/auth'
-import pool from '@/lib/db'
+import { supabase } from '@/lib/supabase'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
@@ -14,34 +14,34 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { email, senha } = schema.parse(body)
 
-    const { rows } = await pool.query(
-      `SELECT id, nome, email, senha, perfil, ativo FROM "Usuario" WHERE email = $1 LIMIT 1`,
-      [email]
-    )
+    const { data, error } = await supabase
+      .from('Usuario')
+      .select('id, nome, email, senha, perfil, ativo')
+      .eq('email', email)
+      .single()
 
-    const usuario = rows[0]
-    if (!usuario || !usuario.ativo) {
+    if (error || !data || !data.ativo) {
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 })
     }
 
-    const ok = await bcrypt.compare(senha, usuario.senha)
+    const ok = await bcrypt.compare(senha, data.senha)
     if (!ok) {
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 })
     }
 
     const token = await signToken({
-      id:     usuario.id,
-      email:  usuario.email,
-      perfil: usuario.perfil,
-      nome:   usuario.nome,
+      id:     data.id,
+      email:  data.email,
+      perfil: data.perfil,
+      nome:   data.nome,
     })
 
     const redirect =
-      usuario.perfil === 'ADMIN' || usuario.perfil === 'ANALISTA'
+      data.perfil === 'ADMIN' || data.perfil === 'ANALISTA'
         ? '/admin/dashboard'
         : '/cliente/dashboard'
 
-    const res = NextResponse.json({ redirect, perfil: usuario.perfil, nome: usuario.nome })
+    const res = NextResponse.json({ redirect, perfil: data.perfil, nome: data.nome })
     res.cookies.set('helmigui_token', token, {
       httpOnly: true,
       secure:   process.env.NODE_ENV === 'production',
