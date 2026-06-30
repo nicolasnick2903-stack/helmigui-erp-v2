@@ -334,7 +334,7 @@ function Select({ value, onChange, children }: { value: string; onChange: (v: st
   return (
     <select
       value={value} onChange={e => onChange(e.target.value)}
-      className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-ouro/50 transition-all"
+      className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-ouro/50 transition-all [&>option]:text-black [&>option]:bg-white"
     >
       {children}
     </select>
